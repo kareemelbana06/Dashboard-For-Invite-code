@@ -279,8 +279,8 @@ function Dashboard() {
 
   return (
     <DashboardLayout active="dashboard">
-      <header className="pb-1">
-        <h1 className="text-3xl font-bold tracking-tight text-[#202a23] max-sm:text-2xl">
+      <header className="min-w-0 pb-1">
+        <h1 className="break-words text-3xl font-bold leading-tight tracking-tight text-[#202a23] max-sm:text-[1.35rem]">
           إدارة صفحات الدعوة
         </h1>
         <p className="mt-2 text-sm leading-6 text-[#758178] sm:text-base">
@@ -288,7 +288,10 @@ function Dashboard() {
         </p>
       </header>
 
-      <section aria-label="ملخص الصفحات" className="mt-6 grid gap-4 sm:grid-cols-3">
+      <section
+        aria-label="ملخص الصفحات"
+        className="mt-6 grid min-w-0 gap-4 md:grid-cols-2 lg:grid-cols-3"
+      >
         <article className="flex items-center gap-4 rounded-2xl border border-[#e5ebe6] bg-white p-5 shadow-[0_8px_24px_rgba(24,48,31,0.035)]">
           <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#e9f6ed] text-[#16804e]">
             <Link2 size={20} />
@@ -337,13 +340,16 @@ function Dashboard() {
         </p>
       )}
 
-      <section aria-label="صفحات الدعوة" className="mt-8 grid items-start gap-5 lg:grid-cols-2">
+      <section
+        aria-label="صفحات الدعوة"
+        className="mt-8 grid min-w-0 items-start gap-5 lg:grid-cols-2"
+      >
         {LANDING_PAGE_SLUGS.map((slug) => {
           const page = pages.find((candidate) => candidate?.slug === slug) ?? null;
           return page ? (
             <article
               key={slug}
-              className="rounded-[22px] border border-[#e3ebe4] bg-white p-6 shadow-[0_10px_32px_rgba(24,48,31,0.045)] max-sm:rounded-[19px] max-sm:p-5"
+              className="min-w-0 rounded-[22px] border border-[#e3ebe4] bg-white p-6 shadow-[0_10px_32px_rgba(24,48,31,0.045)] max-sm:rounded-[19px] max-sm:p-5"
             >
               <div className="flex items-start gap-4">
                 <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#e9f6ed] text-[#16804e]">
@@ -368,7 +374,7 @@ function Dashboard() {
                     dir="ltr"
                     title={page.landing_page_url || undefined}
                     aria-disabled={!page.landing_page_url}
-                    className={`mt-2 block truncate rounded-xl bg-[#f7f9f7] px-3.5 py-3 text-left text-sm font-medium text-[#344138] ${
+                    className={`mt-2 block break-all rounded-xl bg-[#f7f9f7] px-3.5 py-3 text-left text-sm font-medium text-[#344138] ${
                       page.landing_page_url
                         ? "hover:text-[#137344] hover:underline"
                         : "pointer-events-none opacity-60"
@@ -383,7 +389,7 @@ function Dashboard() {
                     <span
                       dir="ltr"
                       title={page.invite_link || undefined}
-                      className="min-w-0 flex-1 truncate rounded-xl border border-[#e8ede9] bg-white px-3.5 py-3 text-left text-sm font-medium text-[#344138]"
+                      className="min-w-0 flex-1 break-all rounded-xl border border-[#e8ede9] bg-white px-3.5 py-3 text-left text-sm font-medium text-[#344138]"
                     >
                       {page.invite_link || "—"}
                     </span>
@@ -403,7 +409,7 @@ function Dashboard() {
                     <dt className="text-xs font-semibold text-[#758178]">كود الدعوة</dt>
                     <dd
                       dir="ltr"
-                      className="mt-1.5 truncate text-left text-sm font-bold text-[#29372e]"
+                      className="mt-1.5 break-all text-left text-sm font-bold text-[#29372e]"
                     >
                       {page.invite_code || "—"}
                     </dd>
@@ -417,11 +423,11 @@ function Dashboard() {
                 </div>
               </dl>
 
-              <div className="mt-6 grid gap-2.5 border-t border-[#edf0ed] pt-5 sm:grid-cols-[1.3fr_1fr_1fr]">
+              <div className="mt-6 grid gap-2.5 border-t border-[#edf0ed] pt-5 lg:grid-cols-[1.3fr_1fr_1fr]">
                 <button
                   type="button"
                   onClick={() => startEditing(page)}
-                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#137344] px-4 text-sm font-bold text-white transition hover:bg-[#105f38] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#16804e]/20"
+                  className="inline-flex min-h-11 min-w-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-[#137344] px-4 text-sm font-bold text-white transition hover:bg-[#105f38] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#16804e]/20"
                 >
                   <Pencil size={16} />
                   تعديل رابط الدعوة
@@ -429,7 +435,7 @@ function Dashboard() {
                 <button
                   type="button"
                   onClick={() => startCustomizing(page)}
-                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#dfe8e1] px-3 text-sm font-semibold text-[#334239] transition hover:bg-[#f7faf7] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#16804e]/20"
+                  className="inline-flex min-h-11 min-w-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-[#dfe8e1] px-3 text-sm font-semibold text-[#334239] transition hover:bg-[#f7faf7] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#16804e]/20"
                 >
                   <Palette size={16} />
                   تخصيص الصفحة
@@ -439,7 +445,7 @@ function Dashboard() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-disabled={!page.landing_page_url}
-                  className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#dfe8e1] px-3 text-sm font-semibold text-[#334239] transition hover:bg-[#f7faf7] ${
+                  className={`inline-flex min-h-11 min-w-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-[#dfe8e1] px-3 text-sm font-semibold text-[#334239] transition hover:bg-[#f7faf7] ${
                     page.landing_page_url ? "" : "pointer-events-none opacity-50"
                   }`}
                 >
@@ -462,7 +468,7 @@ function Dashboard() {
 
       {editingPage && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-[#10231a]/55 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#10231a]/55 p-3 backdrop-blur-sm"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) closeEditor();
           }}
@@ -471,7 +477,7 @@ function Dashboard() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="edit-invite-title"
-            className="w-full max-w-lg rounded-[24px] bg-white p-6 shadow-2xl max-sm:p-5"
+            className="max-h-[min(92dvh,860px)] w-full max-w-[calc(100vw-24px)] overflow-y-auto overscroll-contain rounded-[24px] bg-white p-5 shadow-2xl sm:max-w-lg sm:p-6"
           >
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -570,10 +576,10 @@ function Dashboard() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="customization-title"
-            className="max-h-[min(92vh,860px)] w-full max-w-2xl overflow-y-auto rounded-[24px] bg-white p-5 shadow-2xl sm:p-7"
+            className="max-h-[min(92dvh,860px)] w-full max-w-[calc(100vw-24px)] overflow-y-auto overscroll-contain rounded-[24px] bg-white p-4 shadow-2xl sm:max-w-2xl sm:p-7"
           >
             <div className="flex items-start justify-between gap-4">
-              <div>
+              <div className="min-w-0 flex-1">
                 <p className="text-xs font-semibold text-[#16804e]">
                   {getPageTitle(customizingPage.slug)}
                 </p>
@@ -848,7 +854,7 @@ function Dashboard() {
         <div
           role="status"
           aria-live="polite"
-          className={`fixed bottom-5 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-xl ${
+          className={`fixed bottom-5 left-1/2 z-[60] flex max-w-[calc(100vw-24px)] -translate-x-1/2 items-center gap-2 rounded-xl px-4 py-3 text-center text-sm font-semibold text-white shadow-xl ${
             notice.type === "success" ? "bg-[#137344]" : "bg-[#a33e34]"
           }`}
         >

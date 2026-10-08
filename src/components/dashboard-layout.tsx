@@ -83,7 +83,7 @@ export function DashboardLayout({ active, children }: DashboardLayoutProps) {
   return (
     <div
       dir="rtl"
-      className={`min-h-screen text-[#202521] ${
+      className={`min-h-screen overflow-x-clip text-[#202521] ${
         decorativeBackground
           ? "bg-[radial-gradient(ellipse_at_10%_10%,rgba(221,240,225,0.35),transparent_24%),#f7f9f7]"
           : "bg-[#f7f9f7]"
@@ -122,8 +122,8 @@ export function DashboardLayout({ active, children }: DashboardLayoutProps) {
             )}
           </header>
 
-          <main className="px-8 py-8 max-md:px-5 max-md:py-6 max-sm:px-4 max-sm:py-5">
-            <div className="mx-auto max-w-6xl">
+          <main className="min-w-0 px-8 py-8 max-md:px-5 max-md:py-6 max-sm:px-4 max-sm:py-5">
+            <div className="mx-auto w-full min-w-0 max-w-6xl">
               {error && (
                 <p
                   role="alert"
