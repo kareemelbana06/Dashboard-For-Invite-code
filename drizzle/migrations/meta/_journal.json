@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1791397350604,
+      "tag": "0000_create_site_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791397608044,
+      "tag": "0001_restrict_invite_link_owner",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791405000000,
+      "tag": "0002_enable_invite_settings_initial_insert",
+      "breakpoints": true
+    }
+  ]
+}
