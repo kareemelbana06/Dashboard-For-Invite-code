@@ -22,6 +22,7 @@ import {
   LANDING_PAGE_DEFAULT_TEXT,
   LANDING_PAGE_IDS,
   saveLandingPageCustomization,
+  saveLandingPageImage,
   saveLandingPageInvite,
 } from "@/lib/landing-pages";
 
@@ -30,8 +31,8 @@ describe("landing page customization defaults", () => {
     vi.clearAllMocks();
     supabaseFrom.mockReturnValue({ update, select });
     update.mockReturnValue({ eq });
-    eq.mockReturnValue({ select });
-    select.mockReturnValue({ maybeSingle, in: inFilter });
+    eq.mockReturnValue({ select, maybeSingle, in: inFilter });
+    select.mockReturnValue({ maybeSingle, in: inFilter, eq });
     inFilter.mockReset();
   });
 
@@ -76,6 +77,18 @@ describe("landing page customization defaults", () => {
         heroButtonText: "",
       }),
     ).toEqual(getDefaultLandingPageCustomization(2));
+  });
+
+  it("loads separate hero image values for landing page 2", () => {
+    expect(
+      getLandingPageCustomization(2, {
+        heroCarImage: "https://storage.example/hero-car.webp",
+        heroBikeImage: "https://storage.example/hero-bike.webp",
+      }),
+    ).toMatchObject({
+      heroCarImage: "https://storage.example/hero-car.webp",
+      heroBikeImage: "https://storage.example/hero-bike.webp",
+    });
   });
 
   it("only exposes the two existing landing page ids", () => {
@@ -130,6 +143,42 @@ describe("landing page customization defaults", () => {
       customization: getDefaultLandingPageCustomization(2),
     });
     expect(eq).toHaveBeenCalledExactlyOnceWith("id", 42);
+  });
+
+  it("updates one image by slug while preserving other customization values", async () => {
+    const originalCustomization = {
+      primaryColor: "#123456",
+      heroTitle: "Example",
+      bikeImage: "https://storage.example/bike.webp",
+      carImage: "https://storage.example/old-car.webp",
+    };
+    const updatedPage = {
+      id: 42,
+      name: "Landing Page 2",
+      slug: "landing-2",
+      landing_page_url: "https://example.com/landing-2",
+      invite_link: "https://example.com/invite",
+      invite_code: "invite-code",
+      updated_at: "2026-10-08T00:00:00.000Z",
+      customization: {
+        ...originalCustomization,
+        carImage: "https://storage.example/new-car.webp",
+      },
+    };
+    maybeSingle
+      .mockResolvedValueOnce({ data: { customization: originalCustomization }, error: null })
+      .mockResolvedValueOnce({ data: updatedPage, error: null });
+
+    await saveLandingPageImage("landing-2", "carImage", "https://storage.example/new-car.webp");
+
+    expect(eq).toHaveBeenNthCalledWith(1, "slug", "landing-2");
+    expect(eq).toHaveBeenNthCalledWith(2, "slug", "landing-2");
+    expect(update).toHaveBeenCalledExactlyOnceWith({
+      customization: {
+        ...originalCustomization,
+        carImage: "https://storage.example/new-car.webp",
+      },
+    });
   });
 
   it("saves the complete modern invite URL and its extracted code on the selected page", async () => {

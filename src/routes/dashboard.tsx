@@ -4,13 +4,15 @@ import {
   Clock3,
   Copy,
   ExternalLink,
+  ImageUp,
   Link2,
   Pencil,
   Palette,
   RotateCcw,
+  Trash2,
   X,
 } from "lucide-react";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 
 import { DashboardLayout } from "@/components/dashboard-layout";
 import {
@@ -20,10 +22,13 @@ import {
   getLandingPageCustomization,
   LANDING_PAGE_DEFAULT_COLORS,
   loadLandingPages,
+  saveLandingPageImage,
   saveLandingPageCustomization,
   saveLandingPageInvite,
   type LandingPage,
   type LandingPageCustomization,
+  type LandingPageImageKey,
+  type LandingPageSlug,
 } from "@/lib/landing-pages";
 import { getInviteCodeFromInviteUrl } from "@/lib/invite-link";
 import { supabase } from "@/integrations/supabase/client";
@@ -72,6 +77,104 @@ function getPageTitle(slug: string) {
   return slug === "landing-1" ? "صفحة الهبوط الأولى" : "صفحة الهبوط الثانية";
 }
 
+const LANDING_PAGE_IMAGE_CONFIG: Record<
+  LandingPage["slug"],
+  {
+    key: LandingPageImageKey;
+    label: string;
+    description: string;
+    defaultFile: string;
+  }[]
+> = {
+  "landing-1": [
+    {
+      key: "carImage",
+      label: "صورة السيارة",
+      description: "الصورة التي تظهر مع خيار القيادة بالسيارة.",
+      defaultFile: "delivery-car.jpg",
+    },
+    {
+      key: "bikeImage",
+      label: "صورة الدراجة",
+      description: "الصورة التي تظهر مع خيار التوصيل بالدراجة.",
+      defaultFile: "delivery-bike.jpg",
+    },
+  ],
+  "landing-2": [
+    {
+      key: "heroCarImage",
+      label: "صورة السيارة الرئيسية",
+      description: "صورة السيارة في مقدمة الصفحة.",
+      defaultFile: "hero-car.webp",
+    },
+    {
+      key: "heroBikeImage",
+      label: "صورة الدراجة الرئيسية",
+      description: "صورة الدراجة في مقدمة الصفحة.",
+      defaultFile: "hero-bike.webp",
+    },
+    {
+      key: "carImage",
+      label: "صورة السيارة",
+      description: "الصورة التي تظهر مع خيار القيادة بالسيارة.",
+      defaultFile: "car-driver.webp",
+    },
+    {
+      key: "bikeImage",
+      label: "صورة الدراجة",
+      description: "الصورة التي تظهر مع خيار التوصيل بالدراجة.",
+      defaultFile: "bike-courier.webp",
+    },
+  ],
+};
+
+const LANDING_PAGE_IMAGE_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
+const MAX_LANDING_PAGE_IMAGE_SIZE = 5 * 1024 * 1024;
+
+function getImagePickerInputId(key: LandingPageImageKey) {
+  return `landing-page-image-${key}`;
+}
+
+function validateLandingPageImage(file: File) {
+  if (
+    !LANDING_PAGE_IMAGE_MIME_TYPES.includes(
+      file.type as (typeof LANDING_PAGE_IMAGE_MIME_TYPES)[number],
+    )
+  ) {
+    return "نوع الصورة غير مدعوم. استخدم JPG أو PNG أو WebP.";
+  }
+
+  if (file.size > MAX_LANDING_PAGE_IMAGE_SIZE) {
+    return "حجم الصورة يجب ألا يتجاوز 5 ميجابايت.";
+  }
+
+  return null;
+}
+
+function getPageImageConfig(slug: string) {
+  if (slug === "landing-1" || slug === "landing-2") {
+    return LANDING_PAGE_IMAGE_CONFIG[slug];
+  }
+  return [];
+}
+
+function getLandingPageSlug(slug: string): LandingPageSlug | null {
+  return slug === "landing-1" || slug === "landing-2" ? slug : null;
+}
+
+function getStoragePathFromUrl(url: string) {
+  try {
+    const parsedUrl = new URL(url);
+    const pathParts = parsedUrl.pathname.split("/").filter(Boolean);
+    const bucketIndex = pathParts.indexOf("landing-images");
+    if (bucketIndex === -1) return null;
+    const storagePath = pathParts.slice(bucketIndex + 1).join("/");
+    return storagePath ? decodeURIComponent(storagePath) : null;
+  } catch {
+    return null;
+  }
+}
+
 function Dashboard() {
   const [pages, setPages] = useState<(LandingPage | null)[]>([null, null]);
   const [loading, setLoading] = useState(true);
@@ -83,6 +186,12 @@ function Dashboard() {
     getDefaultLandingPageCustomization(1),
   );
   const [savingCustomization, setSavingCustomization] = useState(false);
+  const [uploadingImageKey, setUploadingImageKey] = useState<LandingPageImageKey | null>(null);
+  const [deletingImageKey, setDeletingImageKey] = useState<LandingPageImageKey | null>(null);
+  const [pageImageUrls, setPageImageUrls] = useState<Partial<Record<LandingPageImageKey, string>>>(
+    {},
+  );
+  const [loadingPageImages, setLoadingPageImages] = useState(false);
   const [inviteLink, setInviteLink] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const [saving, setSaving] = useState(false);
@@ -140,18 +249,52 @@ function Dashboard() {
     setFormError("");
   }
 
-  function startCustomizing(page: LandingPage) {
+  async function startCustomizing(page: LandingPage) {
     const pageId = getLandingPageIdFromSlug(page.slug);
     if (!pageId) {
       setNotice({ type: "error", text: "حدث خطأ، يرجى المحاولة مرة أخرى." });
       return;
     }
     setCustomizingPage(page);
-    setCustomization(getLandingPageCustomization(pageId, page.customization));
+    const pageCustomization = getLandingPageCustomization(pageId, page.customization);
+    setCustomization(pageCustomization);
+    setPageImageUrls(
+      Object.fromEntries(
+        getPageImageConfig(page.slug)
+          .filter(({ key }) => pageCustomization[key])
+          .map(({ key }) => [key, pageCustomization[key]]),
+      ),
+    );
+    setLoadingPageImages(true);
+    try {
+      const { data: files, error } = await supabase.storage
+        .from("landing-images")
+        .list(page.slug, { limit: 100 });
+      if (error) throw error;
+
+      const listedNames = new Set((files ?? []).map((file) => file.name));
+      const availableUrls: Partial<Record<LandingPageImageKey, string>> = {};
+      for (const { key, defaultFile } of getPageImageConfig(page.slug)) {
+        const storedUrl = pageCustomization[key];
+        if (storedUrl) {
+          availableUrls[key] = storedUrl;
+        } else if (listedNames.has(defaultFile)) {
+          const { data } = supabase.storage
+            .from("landing-images")
+            .getPublicUrl(`${page.slug}/${defaultFile}`);
+          availableUrls[key] = data.publicUrl;
+        }
+      }
+      setPageImageUrls(availableUrls);
+    } catch {
+      setNotice({ type: "error", text: "تعذر تحميل صور الصفحة. حاول مرة أخرى." });
+    } finally {
+      setLoadingPageImages(false);
+    }
   }
 
   function closeCustomization() {
-    if (savingCustomization) return;
+    if (savingCustomization || uploadingImageKey || deletingImageKey) return;
     setCustomizingPage(null);
   }
 
@@ -193,21 +336,198 @@ function Dashboard() {
     try {
       const pageId = getLandingPageIdFromSlug(customizingPage.slug);
       if (!pageId) throw new Error("Unknown landing page.");
+      const resetCustomization = {
+        ...getDefaultLandingPageCustomization(pageId),
+        heroImage: customization.heroImage,
+        heroCarImage: customization.heroCarImage,
+        heroBikeImage: customization.heroBikeImage,
+        carImage: customization.carImage,
+        bikeImage: customization.bikeImage,
+      };
       const savedPage = await saveLandingPageCustomization(
         customizingPage.id,
-        getDefaultLandingPageCustomization(pageId),
+        resetCustomization,
         pageId,
       );
       setPages((currentPages) =>
         currentPages.map((page) => (page?.id === savedPage.id ? savedPage : page)),
       );
-      setCustomization(getDefaultLandingPageCustomization(pageId));
+      setCustomization(resetCustomization);
       setCustomizingPage(savedPage);
       setNotice({ type: "success", text: "تم حفظ تعديلات الصفحة بنجاح" });
     } catch {
       setNotice({ type: "error", text: "حدث خطأ، يرجى المحاولة مرة أخرى." });
     } finally {
       setSavingCustomization(false);
+    }
+  }
+
+  async function handleImageUpload(event: ChangeEvent<HTMLInputElement>, key: LandingPageImageKey) {
+    const file = event.target.files?.[0];
+    const page = customizingPage;
+    if (!file || !page) {
+      event.target.value = "";
+      return;
+    }
+
+    const validationError = validateLandingPageImage(file);
+    if (validationError) {
+      setNotice({ type: "error", text: validationError });
+      event.target.value = "";
+      return;
+    }
+
+    const imageConfig = getPageImageConfig(page.slug).find((image) => image.key === key);
+    if (!imageConfig) {
+      setNotice({ type: "error", text: "حدث خطأ أثناء حفظ الصورة. حاول مرة أخرى." });
+      event.target.value = "";
+      return;
+    }
+    const slug = getLandingPageSlug(page.slug);
+    if (!slug) {
+      setNotice({ type: "error", text: "حدث خطأ أثناء حفظ الصورة. حاول مرة أخرى." });
+      event.target.value = "";
+      return;
+    }
+
+    let uploadedStoragePath: string | null = null;
+    setUploadingImageKey(key);
+    try {
+      const extension =
+        file.type === "image/jpeg" ? ".jpg" : file.type === "image/png" ? ".png" : ".webp";
+      const storagePath = `${page.slug}/${key}-${Date.now()}-${crypto.randomUUID()}${extension}`;
+      const { error: uploadError } = await supabase.storage
+        .from("landing-images")
+        .upload(storagePath, file, { contentType: file.type, upsert: false });
+
+      if (uploadError) throw uploadError;
+      uploadedStoragePath = storagePath;
+
+      const publicUrlData = supabase.storage.from("landing-images").getPublicUrl(storagePath);
+      if (!publicUrlData.data?.publicUrl) throw new Error("Could not build public URL.");
+      const publicUrl = publicUrlData.data.publicUrl;
+      const previousImageUrl = customization[key];
+      const savedPage = await saveLandingPageImage(slug, key, publicUrl);
+      uploadedStoragePath = null;
+
+      setPages((currentPages) =>
+        currentPages.map((candidate) => (candidate?.id === savedPage.id ? savedPage : candidate)),
+      );
+      setCustomizingPage(savedPage);
+      setCustomization((current) => ({ ...current, [key]: publicUrl }));
+      setPageImageUrls((current) => ({ ...current, [key]: publicUrl }));
+
+      if (previousImageUrl && previousImageUrl !== publicUrl) {
+        const previousStoragePath = getStoragePathFromUrl(previousImageUrl);
+        const defaultStoragePath = `${page.slug}/${imageConfig.defaultFile}`;
+        if (
+          previousStoragePath &&
+          previousStoragePath !== defaultStoragePath &&
+          previousStoragePath.startsWith(`${page.slug}/`)
+        ) {
+          try {
+            const { error: cleanupError } = await supabase.storage
+              .from("landing-images")
+              .remove([previousStoragePath]);
+            if (cleanupError) throw cleanupError;
+          } catch (cleanupError) {
+            console.error("Failed to remove the replaced landing image.", cleanupError);
+            setNotice({
+              type: "error",
+              text: "تم تغيير الصورة، لكن تعذر حذف النسخة القديمة.",
+            });
+            return;
+          }
+        }
+      }
+
+      setNotice({
+        type: "success",
+        text: previousImageUrl ? "تم تغيير الصورة بنجاح." : "تم إضافة الصورة بنجاح.",
+      });
+    } catch {
+      if (uploadedStoragePath) {
+        try {
+          const { error: cleanupError } = await supabase.storage
+            .from("landing-images")
+            .remove([uploadedStoragePath]);
+          if (cleanupError) throw cleanupError;
+        } catch (cleanupError) {
+          console.error("Failed to remove an unreferenced landing image.", cleanupError);
+        }
+      }
+      setNotice({ type: "error", text: "حدث خطأ أثناء حفظ الصورة. حاول مرة أخرى." });
+    } finally {
+      setUploadingImageKey(null);
+      event.target.value = "";
+    }
+  }
+
+  async function handleImageDelete(key: LandingPageImageKey) {
+    const page = customizingPage;
+    if (!page) return;
+
+    const currentImageUrl = pageImageUrls[key];
+    if (!currentImageUrl || !window.confirm("هل تريد حذف هذه الصورة؟")) {
+      return;
+    }
+
+    const imageConfig = getPageImageConfig(page.slug).find((image) => image.key === key);
+    if (!imageConfig) {
+      setNotice({ type: "error", text: "حدث خطأ أثناء حفظ الصورة. حاول مرة أخرى." });
+      return;
+    }
+    const slug = getLandingPageSlug(page.slug);
+    if (!slug) {
+      setNotice({ type: "error", text: "حدث خطأ أثناء حفظ الصورة. حاول مرة أخرى." });
+      return;
+    }
+    const storagePath = getStoragePathFromUrl(currentImageUrl);
+    const defaultStoragePath = `${page.slug}/${imageConfig.defaultFile}`;
+    if (!customization[key] || storagePath === defaultStoragePath) {
+      setNotice({
+        type: "error",
+        text: "هذه صورة أساسية ولا يمكن حذفها. غيّر الصورة أولًا ثم احذف النسخة الجديدة.",
+      });
+      return;
+    }
+    if (!storagePath || !storagePath.startsWith(`${page.slug}/`)) {
+      setNotice({ type: "error", text: "تعذر تحديد الصورة المطلوب حذفها." });
+      return;
+    }
+
+    setDeletingImageKey(key);
+    try {
+      const { error: deleteError } = await supabase.storage
+        .from("landing-images")
+        .remove([storagePath]);
+      if (deleteError) throw deleteError;
+
+      const savedPage = await saveLandingPageImage(slug, key, "");
+      setPages((currentPages) =>
+        currentPages.map((candidate) => (candidate?.id === savedPage.id ? savedPage : candidate)),
+      );
+      setCustomizingPage(savedPage);
+      setCustomization((current) => ({ ...current, [key]: "" }));
+      const { data: files, error: listError } = await supabase.storage
+        .from("landing-images")
+        .list(page.slug, { limit: 100 });
+      if (listError) throw listError;
+      if ((files ?? []).some((file) => file.name === imageConfig.defaultFile)) {
+        const { data } = supabase.storage.from("landing-images").getPublicUrl(defaultStoragePath);
+        setPageImageUrls((current) => ({ ...current, [key]: data.publicUrl }));
+      } else {
+        setPageImageUrls((current) => {
+          const next = { ...current };
+          delete next[key];
+          return next;
+        });
+      }
+      setNotice({ type: "success", text: "تم حذف الصورة بنجاح." });
+    } catch {
+      setNotice({ type: "error", text: "حدث خطأ أثناء حفظ الصورة. حاول مرة أخرى." });
+    } finally {
+      setDeletingImageKey(null);
     }
   }
 
@@ -743,6 +1063,110 @@ function Dashboard() {
                       className="mt-2 min-h-11 w-full rounded-xl border border-[#dfe6df] bg-white px-3 text-sm outline-none placeholder:text-[#a0aaa2] focus:border-[#16804e] focus:ring-4 focus:ring-[#16804e]/10"
                     />
                   </label>
+                </div>
+              </section>
+
+              <section className="rounded-2xl border border-[#e5ebe6] bg-[#fbfcfb] p-4 sm:p-5">
+                <div className="mb-4">
+                  <h4 className="text-base font-bold text-[#202a23]">صور الصفحة</h4>
+                  <p className="mt-1 text-sm leading-6 text-[#758178]">
+                    أضف أو غيّر الصور المعروضة في الصفحة، وستظهر التغييرات مباشرة في الواجهة.
+                  </p>
+                </div>
+                <div className="grid gap-3">
+                  {getPageImageConfig(customizingPage.slug).map(
+                    ({ key, label, description, defaultFile }) => {
+                      const currentImage = pageImageUrls[key] || "";
+                      const inputId = getImagePickerInputId(key);
+                      const isUploading = uploadingImageKey === key;
+                      const isDeleting = deletingImageKey === key;
+                      const isBusy = isUploading || isDeleting;
+                      const imageLoading = loadingPageImages && !currentImage;
+                      const isDefaultImage =
+                        !customization[key] ||
+                        getStoragePathFromUrl(currentImage) ===
+                          `${customizingPage.slug}/${defaultFile}`;
+
+                      return (
+                        <div
+                          key={key}
+                          className="rounded-xl border border-[#e5ebe6] bg-white p-3.5"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-semibold text-[#344138]">{label}</p>
+                              <p className="mt-1 text-xs leading-5 text-[#829087]">{description}</p>
+                            </div>
+                          </div>
+
+                          <div className="mt-3 flex items-center gap-3">
+                            {currentImage ? (
+                              <div className="relative h-20 w-20 overflow-hidden rounded-xl border border-[#dfe6df] bg-[#f7f9f7]">
+                                <img
+                                  src={currentImage}
+                                  alt={label}
+                                  className="h-full w-full object-cover"
+                                />
+                              </div>
+                            ) : imageLoading ? (
+                              <div className="flex h-20 w-20 items-center justify-center rounded-xl border border-dashed border-[#cfe0d4] bg-[#f7faf7] text-xs text-[#7c8a82]">
+                                جاري التحميل...
+                              </div>
+                            ) : (
+                              <div className="flex h-20 w-20 items-center justify-center rounded-xl border border-dashed border-[#cfe0d4] bg-[#f7faf7] text-[#7c8a82]">
+                                <ImageUp size={20} />
+                              </div>
+                            )}
+
+                            <div className="flex min-w-0 flex-1 flex-wrap gap-2">
+                              <input
+                                id={inputId}
+                                type="file"
+                                accept="image/jpeg,image/png,image/webp"
+                                className="hidden"
+                                onChange={(event) => void handleImageUpload(event, key)}
+                                disabled={isBusy}
+                              />
+
+                              {currentImage ? (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => document.getElementById(inputId)?.click()}
+                                    disabled={isBusy || loadingPageImages}
+                                    className="inline-flex min-h-11 items-center justify-center rounded-xl border border-[#dfe6df] bg-white px-3 text-sm font-semibold text-[#334239] transition hover:bg-[#f7faf7] disabled:cursor-not-allowed disabled:opacity-50"
+                                  >
+                                    {isUploading ? "جاري رفع الصورة..." : "تغيير الصورة"}
+                                  </button>
+                                  {!isDefaultImage && (
+                                    <button
+                                      type="button"
+                                      onClick={() => void handleImageDelete(key)}
+                                      disabled={isBusy || loadingPageImages}
+                                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#f0d5d2] bg-[#fff4f3] px-3 text-sm font-semibold text-[#9a453d] transition hover:bg-[#ffeae7] disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                      <Trash2 size={16} />
+                                      {isDeleting ? "جاري حذف الصورة..." : "حذف الصورة"}
+                                    </button>
+                                  )}
+                                </>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => document.getElementById(inputId)?.click()}
+                                  disabled={isBusy || loadingPageImages}
+                                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#137344] px-3 text-sm font-bold text-white transition hover:bg-[#105f38] disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                  <ImageUp size={16} />
+                                  {isBusy ? "جاري رفع الصورة..." : "إضافة صورة"}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    },
+                  )}
                 </div>
               </section>
 

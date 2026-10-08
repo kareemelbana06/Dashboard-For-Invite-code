@@ -19,9 +19,15 @@ export type LandingPageCustomization = {
   heroTitle: string;
   heroDescription: string;
   heroButtonText: string;
+  heroImage: string;
+  heroCarImage: string;
+  heroBikeImage: string;
+  carImage: string;
+  bikeImage: string;
   showSection: boolean;
   showCTA: boolean;
   showImage: boolean;
+  [key: string]: string | boolean | undefined;
 };
 
 export const DEFAULT_LANDING_PAGE_CUSTOMIZATION: LandingPageCustomization = {
@@ -32,6 +38,11 @@ export const DEFAULT_LANDING_PAGE_CUSTOMIZATION: LandingPageCustomization = {
   heroTitle: "",
   heroDescription: "",
   heroButtonText: "",
+  heroImage: "",
+  heroCarImage: "",
+  heroBikeImage: "",
+  carImage: "",
+  bikeImage: "",
   showSection: true,
   showCTA: true,
   showImage: true,
@@ -109,6 +120,12 @@ export function getLandingPageCustomization(
     const color = stored[key];
     return typeof color === "string" && /^#[\da-f]{6}$/i.test(color) ? color : "";
   };
+  const getImage = (
+    key: "heroImage" | "heroCarImage" | "heroBikeImage" | "carImage" | "bikeImage",
+  ) => {
+    const imageUrl = stored[key];
+    return typeof imageUrl === "string" ? imageUrl : "";
+  };
 
   return {
     primaryColor: getColor("primaryColor"),
@@ -118,6 +135,11 @@ export function getLandingPageCustomization(
     heroTitle: getText("heroTitle"),
     heroDescription: getText("heroDescription"),
     heroButtonText: getText("heroButtonText"),
+    heroImage: getImage("heroImage"),
+    heroCarImage: getImage("heroCarImage"),
+    heroBikeImage: getImage("heroBikeImage"),
+    carImage: getImage("carImage"),
+    bikeImage: getImage("bikeImage"),
     showSection: typeof stored["showSection"] === "boolean" ? stored["showSection"] : true,
     showCTA: typeof stored["showCTA"] === "boolean" ? stored["showCTA"] : true,
     showImage: typeof stored["showImage"] === "boolean" ? stored["showImage"] : true,
@@ -181,6 +203,9 @@ export async function saveLandingPageCustomization(
     heroTitle: customization.heroTitle.trim() || textDefaults.heroTitle,
     heroDescription: customization.heroDescription.trim() || textDefaults.heroDescription,
     heroButtonText: customization.heroButtonText.trim() || textDefaults.heroButtonText,
+    heroImage: typeof customization.heroImage === "string" ? customization.heroImage : "",
+    carImage: typeof customization.carImage === "string" ? customization.carImage : "",
+    bikeImage: typeof customization.bikeImage === "string" ? customization.bikeImage : "",
   };
   const { data, error } = await supabase
     .from("landing_pages")
@@ -192,6 +217,48 @@ export async function saveLandingPageCustomization(
   if (error) throw error;
   if (!data) throw new Error("Landing page was not found.");
   if (data.id !== id) throw new Error("Updated landing page id did not match the requested id.");
+
+  return data;
+}
+
+export type LandingPageImageKey = "carImage" | "bikeImage" | "heroCarImage" | "heroBikeImage";
+
+export async function saveLandingPageImage(
+  slug: LandingPageSlug,
+  key: LandingPageImageKey,
+  imageUrl: string,
+): Promise<LandingPage> {
+  const { data: existingPage, error: loadError } = await supabase
+    .from("landing_pages")
+    .select("customization")
+    .eq("slug", slug)
+    .maybeSingle();
+
+  if (loadError) throw loadError;
+  if (!existingPage) throw new Error("Landing page was not found.");
+
+  const existingCustomization =
+    existingPage.customization &&
+    typeof existingPage.customization === "object" &&
+    !Array.isArray(existingPage.customization)
+      ? (existingPage.customization as { [key: string]: Json | undefined })
+      : {};
+  const { data, error } = await supabase
+    .from("landing_pages")
+    .update({
+      customization: {
+        ...existingCustomization,
+        [key]: imageUrl,
+      },
+    })
+    .eq("slug", slug)
+    .select("id, name, slug, landing_page_url, invite_link, invite_code, updated_at, customization")
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) throw new Error("Landing page was not found.");
+  if (data.slug !== slug)
+    throw new Error("Updated landing page slug did not match the requested slug.");
 
   return data;
 }
