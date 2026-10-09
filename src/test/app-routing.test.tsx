@@ -31,11 +31,11 @@ describe("App routing", () => {
     expect(matches.at(-1)?.routeId).toBe("/invite");
   });
 
-  it("matches the settings page", () => {
+  it("does not expose the settings page", () => {
     const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
 
     const matches = router.matchRoutes("/settings");
 
-    expect(matches.at(-1)?.routeId).toBe("/settings");
+    expect(matches.some((match) => match.routeId === "/settings")).toBe(false);
   });
 });

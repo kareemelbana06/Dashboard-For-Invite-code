@@ -9,12 +9,21 @@ import {
   Pencil,
   Palette,
   RotateCcw,
-  Trash2,
   X,
 } from "lucide-react";
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 
 import { DashboardLayout } from "@/components/dashboard-layout";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   LANDING_PAGE_SLUGS,
   getLandingPageIdFromSlug,
@@ -74,7 +83,7 @@ function formatUpdatedAt(value: string | null) {
 }
 
 function getPageTitle(slug: string) {
-  return slug === "landing-1" ? "صفحة الهبوط الأولى" : "صفحة الهبوط الثانية";
+  return slug === "landing-1" ? "صفحة التسجيل الأولى" : "صفحة التسجيل الثانية";
 }
 
 const LANDING_PAGE_IMAGE_CONFIG: Record<
@@ -90,39 +99,39 @@ const LANDING_PAGE_IMAGE_CONFIG: Record<
     {
       key: "carImage",
       label: "صورة السيارة",
-      description: "الصورة التي تظهر مع خيار القيادة بالسيارة.",
+      description: "تظهر هذه الصورة بجانب خيار العمل بالسيارة في صفحتك.",
       defaultFile: "delivery-car.jpg",
     },
     {
       key: "bikeImage",
       label: "صورة الدراجة",
-      description: "الصورة التي تظهر مع خيار التوصيل بالدراجة.",
+      description: "تظهر هذه الصورة بجانب خيار التوصيل بالدراجة في صفحتك.",
       defaultFile: "delivery-bike.jpg",
     },
   ],
   "landing-2": [
     {
       key: "heroCarImage",
-      label: "صورة السيارة الرئيسية",
-      description: "صورة السيارة في مقدمة الصفحة.",
+      label: "صورة السيارة في أعلى الصفحة",
+      description: "تظهر هذه الصورة في بداية صفحتك.",
       defaultFile: "hero-car.webp",
     },
     {
       key: "heroBikeImage",
-      label: "صورة الدراجة الرئيسية",
-      description: "صورة الدراجة في مقدمة الصفحة.",
+      label: "صورة الدراجة في أعلى الصفحة",
+      description: "تظهر هذه الصورة في بداية صفحتك.",
       defaultFile: "hero-bike.webp",
     },
     {
       key: "carImage",
       label: "صورة السيارة",
-      description: "الصورة التي تظهر مع خيار القيادة بالسيارة.",
+      description: "تظهر هذه الصورة بجانب خيار العمل بالسيارة في صفحتك.",
       defaultFile: "car-driver.webp",
     },
     {
       key: "bikeImage",
       label: "صورة الدراجة",
-      description: "الصورة التي تظهر مع خيار التوصيل بالدراجة.",
+      description: "تظهر هذه الصورة بجانب خيار التوصيل بالدراجة في صفحتك.",
       defaultFile: "bike-courier.webp",
     },
   ],
@@ -188,6 +197,7 @@ function Dashboard() {
   const [savingCustomization, setSavingCustomization] = useState(false);
   const [uploadingImageKey, setUploadingImageKey] = useState<LandingPageImageKey | null>(null);
   const [deletingImageKey, setDeletingImageKey] = useState<LandingPageImageKey | null>(null);
+  const [imageToRestore, setImageToRestore] = useState<LandingPageImageKey | null>(null);
   const [pageImageUrls, setPageImageUrls] = useState<Partial<Record<LandingPageImageKey, string>>>(
     {},
   );
@@ -217,7 +227,7 @@ function Dashboard() {
         setAuthenticated(true);
       } catch {
         if (!active) return;
-        setLoadError("حدث خطأ، يرجى المحاولة مرة أخرى.");
+        setLoadError("لم نتمكن من تحميل صفحاتك. حاول تحديث الصفحة.");
       } finally {
         if (active) setLoading(false);
       }
@@ -252,7 +262,7 @@ function Dashboard() {
   async function startCustomizing(page: LandingPage) {
     const pageId = getLandingPageIdFromSlug(page.slug);
     if (!pageId) {
-      setNotice({ type: "error", text: "حدث خطأ، يرجى المحاولة مرة أخرى." });
+      setNotice({ type: "error", text: "لم نتمكن من فتح تعديل الصفحة. حاول مرة أخرى." });
       return;
     }
     setCustomizingPage(page);
@@ -287,7 +297,10 @@ function Dashboard() {
       }
       setPageImageUrls(availableUrls);
     } catch {
-      setNotice({ type: "error", text: "تعذر تحميل صور الصفحة. حاول مرة أخرى." });
+      setNotice({
+        type: "error",
+        text: "لم نتمكن من عرض الصور. أغلق النافذة وحاول فتحها مرة أخرى.",
+      });
     } finally {
       setLoadingPageImages(false);
     }
@@ -295,6 +308,7 @@ function Dashboard() {
 
   function closeCustomization() {
     if (savingCustomization || uploadingImageKey || deletingImageKey) return;
+    setImageToRestore(null);
     setCustomizingPage(null);
   }
 
@@ -315,9 +329,9 @@ function Dashboard() {
         currentPages.map((page) => (page?.id === savedPage.id ? savedPage : page)),
       );
       setCustomizingPage(null);
-      setNotice({ type: "success", text: "تم حفظ تعديلات الصفحة بنجاح" });
+      setNotice({ type: "success", text: "تم تحديث شكل الصفحة." });
     } catch {
-      setNotice({ type: "error", text: "حدث خطأ، يرجى المحاولة مرة أخرى." });
+      setNotice({ type: "error", text: "لم نتمكن من حفظ التعديلات. حاول مرة أخرى." });
     } finally {
       setSavingCustomization(false);
     }
@@ -327,7 +341,7 @@ function Dashboard() {
     if (
       !customizingPage ||
       savingCustomization ||
-      !window.confirm("هل تريد استعادة التصميم والنصوص الأصلية؟")
+      !window.confirm("هل تريد العودة إلى ألوان ونصوص الصفحة الأصلية؟")
     ) {
       return;
     }
@@ -354,9 +368,9 @@ function Dashboard() {
       );
       setCustomization(resetCustomization);
       setCustomizingPage(savedPage);
-      setNotice({ type: "success", text: "تم حفظ تعديلات الصفحة بنجاح" });
+      setNotice({ type: "success", text: "تمت العودة إلى ألوان ونصوص الصفحة الأصلية." });
     } catch {
-      setNotice({ type: "error", text: "حدث خطأ، يرجى المحاولة مرة أخرى." });
+      setNotice({ type: "error", text: "لم نتمكن من استعادة شكل الصفحة. حاول مرة أخرى." });
     } finally {
       setSavingCustomization(false);
     }
@@ -379,13 +393,13 @@ function Dashboard() {
 
     const imageConfig = getPageImageConfig(page.slug).find((image) => image.key === key);
     if (!imageConfig) {
-      setNotice({ type: "error", text: "حدث خطأ أثناء حفظ الصورة. حاول مرة أخرى." });
+      setNotice({ type: "error", text: "لم نتمكن من تغيير الصورة. اختر صورة أخرى وحاول مجددًا." });
       event.target.value = "";
       return;
     }
     const slug = getLandingPageSlug(page.slug);
     if (!slug) {
-      setNotice({ type: "error", text: "حدث خطأ أثناء حفظ الصورة. حاول مرة أخرى." });
+      setNotice({ type: "error", text: "لم نتمكن من تغيير الصورة. اختر صورة أخرى وحاول مجددًا." });
       event.target.value = "";
       return;
     }
@@ -434,7 +448,7 @@ function Dashboard() {
             console.error("Failed to remove the replaced landing image.", cleanupError);
             setNotice({
               type: "error",
-              text: "تم تغيير الصورة، لكن تعذر حذف النسخة القديمة.",
+              text: "تم تغيير الصورة، لكن لم نتمكن من إزالة الصورة السابقة.",
             });
             return;
           }
@@ -443,7 +457,7 @@ function Dashboard() {
 
       setNotice({
         type: "success",
-        text: previousImageUrl ? "تم تغيير الصورة بنجاح." : "تم إضافة الصورة بنجاح.",
+        text: "تم تغيير الصورة بنجاح، وستظهر في صفحتك.",
       });
     } catch {
       if (uploadedStoragePath) {
@@ -456,7 +470,7 @@ function Dashboard() {
           console.error("Failed to remove an unreferenced landing image.", cleanupError);
         }
       }
-      setNotice({ type: "error", text: "حدث خطأ أثناء حفظ الصورة. حاول مرة أخرى." });
+      setNotice({ type: "error", text: "لم نتمكن من تغيير الصورة. اختر صورة أخرى وحاول مجددًا." });
     } finally {
       setUploadingImageKey(null);
       event.target.value = "";
@@ -468,18 +482,16 @@ function Dashboard() {
     if (!page) return;
 
     const currentImageUrl = pageImageUrls[key];
-    if (!currentImageUrl || !window.confirm("هل تريد حذف هذه الصورة؟")) {
-      return;
-    }
+    if (!currentImageUrl) return;
 
     const imageConfig = getPageImageConfig(page.slug).find((image) => image.key === key);
     if (!imageConfig) {
-      setNotice({ type: "error", text: "حدث خطأ أثناء حفظ الصورة. حاول مرة أخرى." });
+      setNotice({ type: "error", text: "لم نتمكن من العودة للصورة الأصلية. حاول مرة أخرى." });
       return;
     }
     const slug = getLandingPageSlug(page.slug);
     if (!slug) {
-      setNotice({ type: "error", text: "حدث خطأ أثناء حفظ الصورة. حاول مرة أخرى." });
+      setNotice({ type: "error", text: "لم نتمكن من العودة للصورة الأصلية. حاول مرة أخرى." });
       return;
     }
     const storagePath = getStoragePathFromUrl(currentImageUrl);
@@ -492,7 +504,7 @@ function Dashboard() {
       return;
     }
     if (!storagePath || !storagePath.startsWith(`${page.slug}/`)) {
-      setNotice({ type: "error", text: "تعذر تحديد الصورة المطلوب حذفها." });
+      setNotice({ type: "error", text: "لم نتمكن من تحديد الصورة. أغلق النافذة وحاول مرة أخرى." });
       return;
     }
 
@@ -523,9 +535,9 @@ function Dashboard() {
           return next;
         });
       }
-      setNotice({ type: "success", text: "تم حذف الصورة بنجاح." });
+      setNotice({ type: "success", text: "تمت العودة للصورة الأصلية." });
     } catch {
-      setNotice({ type: "error", text: "حدث خطأ أثناء حفظ الصورة. حاول مرة أخرى." });
+      setNotice({ type: "error", text: "لم نتمكن من العودة للصورة الأصلية. حاول مرة أخرى." });
     } finally {
       setDeletingImageKey(null);
     }
@@ -546,7 +558,7 @@ function Dashboard() {
       const url = new URL(normalizedLink);
       if (url.protocol !== "https:" && url.protocol !== "http:") throw new Error();
     } catch {
-      setFormError("حدث خطأ، يرجى المحاولة مرة أخرى.");
+      setFormError("تأكد من إدخال رابط تسجيل صحيح يبدأ بـ https:// أو http://.");
       return;
     }
 
@@ -558,9 +570,9 @@ function Dashboard() {
         currentPages.map((page) => (page?.id === savedPage.id ? savedPage : page)),
       );
       setEditingPage(null);
-      setNotice({ type: "success", text: "تم تحديث رابط الدعوة بنجاح" });
+      setNotice({ type: "success", text: "تم تحديث رابط التسجيل." });
     } catch {
-      setFormError("حدث خطأ، يرجى المحاولة مرة أخرى.");
+      setFormError("لم نتمكن من حفظ الرابط. حاول مرة أخرى.");
     } finally {
       setSaving(false);
     }
@@ -571,7 +583,7 @@ function Dashboard() {
       await navigator.clipboard.writeText(page.invite_link);
       setNotice({ type: "success", text: "تم نسخ الرابط" });
     } catch {
-      setNotice({ type: "error", text: "حدث خطأ، يرجى المحاولة مرة أخرى." });
+      setNotice({ type: "error", text: "لم نتمكن من نسخ الرابط. حاول مرة أخرى." });
     }
   }
 
@@ -579,11 +591,11 @@ function Dashboard() {
     return (
       <div
         dir="rtl"
-        className="flex min-h-screen items-center justify-center bg-[#f4f7f5] px-4 text-center text-sm text-[#657169]"
+        className="flex min-h-screen items-center justify-center bg-[#f7f9f7] px-4 text-center text-sm text-[#657169]"
       >
         {loading
           ? "جاري التحقق من تسجيل الدخول..."
-          : loadError || "حدث خطأ، يرجى المحاولة مرة أخرى."}
+          : loadError || "لم نتمكن من فتح صفحاتك. حاول تحديث الصفحة."}
       </div>
     );
   }
@@ -596,57 +608,62 @@ function Dashboard() {
       : latest;
   }, null);
   const customizingPageId = customizingPage ? getLandingPageIdFromSlug(customizingPage.slug) : null;
+  const imageToRestoreConfig = customizingPage
+    ? getPageImageConfig(customizingPage.slug).find(({ key }) => key === imageToRestore)
+    : undefined;
 
   return (
     <DashboardLayout active="dashboard">
-      <header className="min-w-0 pb-1">
-        <h1 className="break-words text-3xl font-bold leading-tight tracking-tight text-[#202a23] max-sm:text-[1.35rem]">
-          إدارة صفحات الدعوة
+      <header className="min-w-0 border-b border-[#e7ece8] pb-6 max-sm:pb-5">
+        <h1 className="break-words text-[2rem] font-bold leading-tight tracking-tight text-[#202a23] max-sm:text-[1.5rem]">
+          لوحة إدارة صفحاتك
         </h1>
-        <p className="mt-2 text-sm leading-6 text-[#758178] sm:text-base">
-          إدارة روابط الدعوة وتخصيص صفحاتك بسهولة.
+        <p className="mt-2.5 text-sm leading-6 text-[#657169] sm:text-[15px]">
+          افتح صفحاتك، غيّر رابط التسجيل أو عدّل شكل الصفحة بخطوات بسيطة.
         </p>
       </header>
 
       <section
         aria-label="ملخص الصفحات"
-        className="mt-6 grid min-w-0 gap-4 md:grid-cols-2 lg:grid-cols-3"
+        className="mt-6 grid min-w-0 grid-cols-1 gap-4 min-[480px]:grid-cols-2 lg:grid-cols-3 max-sm:mt-5 max-sm:gap-3"
       >
-        <article className="flex items-center gap-4 rounded-2xl border border-[#e5ebe6] bg-white p-5 shadow-[0_8px_24px_rgba(24,48,31,0.035)]">
-          <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#e9f6ed] text-[#16804e]">
+        <article className="flex min-h-[132px] min-w-0 items-center gap-4 rounded-2xl border border-[#e5ebe6] bg-white p-5 shadow-[0_3px_12px_rgba(24,48,31,0.025)] transition-shadow hover:shadow-[0_8px_24px_rgba(24,48,31,0.055)] max-sm:min-h-[112px] max-sm:gap-3 max-sm:rounded-xl max-sm:px-4 max-sm:py-3.5">
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-[14px] bg-[#e9f6ed] text-[#16804e] ring-1 ring-inset ring-[#deece1] max-sm:size-10">
             <Link2 size={20} />
           </span>
           <div>
             <p className="text-sm font-semibold text-[#657169]">صفحاتك</p>
-            <p className="mt-1 text-xl font-bold text-[#202a23]">{activePages.length}</p>
-            <p className="mt-0.5 text-xs text-[#829087]">صفحات دعوة نشطة</p>
+            <p className="mt-1 text-2xl font-bold tabular-nums tracking-tight text-[#202a23]">
+              {activePages.length}
+            </p>
+            <p className="mt-0.5 text-xs text-[#657169]">صفحاتك الجاهزة للزوار</p>
           </div>
         </article>
-        <article className="flex items-center gap-4 rounded-2xl border border-[#e5ebe6] bg-white p-5 shadow-[0_8px_24px_rgba(24,48,31,0.035)]">
-          <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#f2f5f2] text-[#617267]">
+        <article className="flex min-h-[132px] min-w-0 items-center gap-4 rounded-2xl border border-[#e5ebe6] bg-white p-5 shadow-[0_3px_12px_rgba(24,48,31,0.025)] transition-shadow hover:shadow-[0_8px_24px_rgba(24,48,31,0.055)] max-sm:min-h-[112px] max-sm:gap-3 max-sm:rounded-xl max-sm:p-4">
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-[14px] bg-[#f2f5f2] text-[#617267] ring-1 ring-inset ring-[#e8ece8] max-sm:size-10">
             <Clock3 size={20} />
           </span>
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-[#657169]">آخر تحديث</p>
+            <p className="text-sm font-semibold text-[#657169]">آخر تعديل</p>
             <p className="mt-1 truncate text-sm font-bold text-[#202a23]">
               {latestPage ? formatUpdatedAt(latestPage.updated_at) : "لا توجد تحديثات بعد"}
             </p>
             {latestPage && (
-              <p className="mt-0.5 truncate text-xs text-[#829087]">
+              <p className="mt-0.5 truncate text-xs text-[#657169]">
                 {getPageTitle(latestPage.slug)}
               </p>
             )}
           </div>
         </article>
-        <article className="flex items-center gap-4 rounded-2xl border border-[#e5ebe6] bg-white p-5 shadow-[0_8px_24px_rgba(24,48,31,0.035)]">
-          <span className="relative flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#e9f6ed] text-[#16804e]">
+        <article className="flex min-h-[132px] min-w-0 items-center gap-4 rounded-2xl border border-[#e5ebe6] bg-white p-5 shadow-[0_3px_12px_rgba(24,48,31,0.025)] transition-shadow hover:shadow-[0_8px_24px_rgba(24,48,31,0.055)] max-sm:min-h-[112px] max-sm:gap-3 max-sm:rounded-xl max-sm:p-4">
+          <span className="relative flex size-11 shrink-0 items-center justify-center rounded-[14px] bg-[#e9f6ed] text-[#16804e] ring-1 ring-inset ring-[#deece1] max-sm:size-10">
             <span className="absolute left-2 top-2 size-2 rounded-full bg-[#22a35a]" />
             <Check size={20} />
           </span>
           <div>
-            <p className="text-sm font-semibold text-[#657169]">حالة النظام</p>
-            <p className="mt-1 text-sm font-bold text-[#137344]">النظام جاهز</p>
-            <p className="mt-0.5 text-xs text-[#829087]">يمكنك إدارة صفحاتك الآن</p>
+            <p className="text-sm font-semibold text-[#657169]">حالة صفحاتك</p>
+            <p className="mt-1 text-sm font-bold text-[#137344]">جاهزة</p>
+            <p className="mt-0.5 text-xs text-[#657169]">يمكنك فتحها أو تعديلها الآن</p>
           </div>
         </article>
       </section>
@@ -656,37 +673,39 @@ function Dashboard() {
           role="alert"
           className="mt-5 rounded-xl border border-[#f0d5d2] bg-[#fff2f0] px-4 py-3 text-sm text-[#a33e34]"
         >
-          حدث خطأ، يرجى المحاولة مرة أخرى.
+          لم نتمكن من تحميل صفحاتك. حاول تحديث الصفحة.
         </p>
       )}
 
       <section
         aria-label="صفحات الدعوة"
-        className="mt-8 grid min-w-0 items-start gap-5 lg:grid-cols-2"
+        className="mt-8 grid min-w-0 items-stretch gap-5 lg:grid-cols-2 max-sm:mt-6 max-sm:gap-4"
       >
         {LANDING_PAGE_SLUGS.map((slug) => {
           const page = pages.find((candidate) => candidate?.slug === slug) ?? null;
           return page ? (
             <article
               key={slug}
-              className="min-w-0 rounded-[22px] border border-[#e3ebe4] bg-white p-6 shadow-[0_10px_32px_rgba(24,48,31,0.045)] max-sm:rounded-[19px] max-sm:p-5"
+              className="group min-w-0 rounded-[20px] border border-[#e3ebe4] bg-white p-6 shadow-[0_4px_18px_rgba(24,48,31,0.035)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#d4e1d6] hover:shadow-[0_12px_30px_rgba(24,48,31,0.075)] max-sm:rounded-2xl max-sm:p-4 sm:p-5 lg:p-6"
             >
-              <div className="flex items-start gap-4">
-                <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#e9f6ed] text-[#16804e]">
+              <div className="flex items-start gap-3.5">
+                <span className="flex size-11 shrink-0 items-center justify-center rounded-[14px] bg-[#e9f6ed] text-[#16804e] ring-1 ring-inset ring-[#deece1]">
                   <Link2 size={20} />
                 </span>
                 <div className="min-w-0 flex-1">
-                  <h2 className="text-lg font-bold text-[#202a23]">{getPageTitle(slug)}</h2>
-                  <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[#eaf6ee] px-2.5 py-1 text-xs font-semibold text-[#137344]">
+                  <h2 className="text-[17px] font-bold tracking-tight text-[#202a23]">
+                    {getPageTitle(slug)}
+                  </h2>
+                  <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[#eaf6ee] px-2.5 py-1 text-[11px] font-semibold text-[#137344]">
                     <span className="size-1.5 rounded-full bg-[#22a35a]" />
                     نشطة
                   </span>
                 </div>
               </div>
 
-              <dl className="mt-6 space-y-5">
+              <dl className="mt-5 space-y-5">
                 <div className="min-w-0">
-                  <dt className="text-xs font-semibold text-[#758178]">رابط الصفحة</dt>
+                  <dt className="text-xs font-semibold text-[#657169]">رابط فتح الصفحة</dt>
                   <a
                     href={page.landing_page_url || undefined}
                     target="_blank"
@@ -694,9 +713,9 @@ function Dashboard() {
                     dir="ltr"
                     title={page.landing_page_url || undefined}
                     aria-disabled={!page.landing_page_url}
-                    className={`mt-2 block break-all rounded-xl bg-[#f7f9f7] px-3.5 py-3 text-left text-sm font-medium text-[#344138] ${
+                    className={`mt-2 block min-h-11 break-all rounded-xl border border-[#edf0ed] bg-[#f7f9f7] px-3.5 py-3 text-left text-[13px] leading-5 text-[#344138] transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#16804e]/15 ${
                       page.landing_page_url
-                        ? "hover:text-[#137344] hover:underline"
+                        ? "hover:border-[#d8e6da] hover:bg-[#f4f8f4] hover:text-[#137344] hover:underline"
                         : "pointer-events-none opacity-60"
                     }`}
                   >
@@ -704,12 +723,12 @@ function Dashboard() {
                   </a>
                 </div>
                 <div className="min-w-0">
-                  <dt className="text-xs font-semibold text-[#758178]">رابط الدعوة الحالي</dt>
-                  <dd className="mt-2 flex min-w-0 items-center gap-2">
+                  <dt className="text-xs font-semibold text-[#657169]">رابط التسجيل الحالي</dt>
+                  <dd className="mt-2 flex min-w-0 items-stretch gap-2 max-sm:flex-col">
                     <span
                       dir="ltr"
                       title={page.invite_link || undefined}
-                      className="min-w-0 flex-1 break-all rounded-xl border border-[#e8ede9] bg-white px-3.5 py-3 text-left text-sm font-medium text-[#344138]"
+                      className="min-h-11 min-w-0 flex-1 break-all rounded-xl border border-[#e8ede9] bg-white px-3.5 py-3 text-left text-[13px] leading-5 text-[#344138]"
                     >
                       {page.invite_link || "—"}
                     </span>
@@ -717,70 +736,70 @@ function Dashboard() {
                       type="button"
                       onClick={() => void copyInviteLink(page)}
                       disabled={!page.invite_link}
-                      className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl border border-[#dfe8e1] px-3 text-sm font-semibold text-[#334239] transition hover:bg-[#f7faf7] disabled:cursor-not-allowed disabled:opacity-50"
+                      className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl border border-[#dfe8e1] px-3.5 text-sm font-semibold text-[#334239] transition hover:bg-[#f7faf7] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#16804e]/15 disabled:cursor-not-allowed disabled:opacity-50 max-sm:w-full"
                     >
                       <Copy size={16} />
-                      نسخ
+                      نسخ الرابط
                     </button>
                   </dd>
                 </div>
                 <div className="grid gap-4 rounded-xl bg-[#f7f9f7] p-4 sm:grid-cols-2">
                   <div className="min-w-0">
-                    <dt className="text-xs font-semibold text-[#758178]">كود الدعوة</dt>
+                    <dt className="text-xs font-semibold text-[#657169]">كود الدعوة</dt>
                     <dd
                       dir="ltr"
-                      className="mt-1.5 break-all text-left text-sm font-bold text-[#29372e]"
+                      className="mt-1.5 break-all text-left text-sm font-bold text-[#202a23]"
                     >
-                      {page.invite_code || "—"}
+                      {page.invite_code || "لا يوجد كود"}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-xs font-semibold text-[#758178]">آخر تحديث</dt>
-                    <dd className="mt-1.5 text-sm font-semibold text-[#29372e]">
+                    <dt className="text-xs font-semibold text-[#657169]">آخر تعديل للصفحة</dt>
+                    <dd className="mt-1.5 text-sm font-semibold text-[#202a23]">
                       {formatUpdatedAt(page.updated_at)}
                     </dd>
                   </div>
                 </div>
               </dl>
 
-              <div className="mt-6 grid gap-2.5 border-t border-[#edf0ed] pt-5 lg:grid-cols-[1.3fr_1fr_1fr]">
-                <button
-                  type="button"
-                  onClick={() => startEditing(page)}
-                  className="inline-flex min-h-11 min-w-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-[#137344] px-4 text-sm font-bold text-white transition hover:bg-[#105f38] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#16804e]/20"
-                >
-                  <Pencil size={16} />
-                  تعديل رابط الدعوة
-                </button>
-                <button
-                  type="button"
-                  onClick={() => startCustomizing(page)}
-                  className="inline-flex min-h-11 min-w-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-[#dfe8e1] px-3 text-sm font-semibold text-[#334239] transition hover:bg-[#f7faf7] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#16804e]/20"
-                >
-                  <Palette size={16} />
-                  تخصيص الصفحة
-                </button>
+              <div className="mt-5 grid min-w-0 gap-2.5 border-t border-[#e5ebe6] pt-5 sm:grid-cols-2 xl:grid-cols-3">
                 <a
                   href={page.landing_page_url || undefined}
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-disabled={!page.landing_page_url}
-                  className={`inline-flex min-h-11 min-w-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-[#dfe8e1] px-3 text-sm font-semibold text-[#334239] transition hover:bg-[#f7faf7] ${
+                  className={`inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-xl border border-[#dfe8e1] px-3 text-center text-sm font-semibold leading-5 text-[#334239] transition hover:bg-[#f7faf7] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#16804e]/15 ${
                     page.landing_page_url ? "" : "pointer-events-none opacity-50"
                   }`}
                 >
-                  فتح الصفحة
                   <ExternalLink size={16} />
+                  فتح الصفحة
                 </a>
+                <button
+                  type="button"
+                  onClick={() => startEditing(page)}
+                  className="inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-xl bg-[#137344] px-3 text-center text-sm font-bold leading-5 text-white shadow-[0_2px_5px_rgba(29,78,216,0.16)] transition hover:bg-[#105f38] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#137344]/20"
+                >
+                  <Pencil size={16} />
+                  تغيير رابط التسجيل
+                </button>
+                <button
+                  type="button"
+                  onClick={() => startCustomizing(page)}
+                  className="inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-xl border border-[#dfe8e1] px-3 text-center text-sm font-semibold leading-5 text-[#334239] transition hover:bg-[#f7faf7] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#16804e]/15"
+                >
+                  <Palette size={16} />
+                  تعديل شكل الصفحة
+                </button>
               </div>
             </article>
           ) : (
             <div
               key={slug}
               role="alert"
-              className="rounded-[24px] border border-[#f0d5d2] bg-[#fff9f8] p-6 text-sm leading-6 text-[#a33e34] max-sm:rounded-[21px] max-sm:p-5"
+              className="rounded-[24px] border border-[#f0d5d2] bg-[#fff2f0] p-6 text-sm leading-6 text-[#a33e34] max-sm:rounded-[21px] max-sm:p-5"
             >
-              حدث خطأ، يرجى المحاولة مرة أخرى.
+              لم نتمكن من عرض هذه الصفحة. حاول تحديث الصفحة.
             </div>
           );
         })}
@@ -788,7 +807,7 @@ function Dashboard() {
 
       {editingPage && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-[#10231a]/55 p-3 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#10231a]/55 p-3 backdrop-blur-sm max-sm:items-end max-sm:p-0"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) closeEditor();
           }}
@@ -797,15 +816,15 @@ function Dashboard() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="edit-invite-title"
-            className="max-h-[min(92dvh,860px)] w-full max-w-[calc(100vw-24px)] overflow-y-auto overscroll-contain rounded-[24px] bg-white p-5 shadow-2xl sm:max-w-lg sm:p-6"
+            className="max-h-[min(92dvh,860px)] w-full max-w-[calc(100vw-24px)] overflow-y-auto overscroll-contain rounded-[24px] bg-white p-5 shadow-2xl sm:max-w-lg sm:p-6 max-sm:max-h-[92dvh] max-sm:max-w-none max-sm:rounded-b-none max-sm:rounded-t-[24px] max-sm:pb-[calc(1.25rem+env(safe-area-inset-bottom))]"
           >
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h3 id="edit-invite-title" className="text-xl font-bold text-[#202a23]">
-                  تعديل رابط الدعوة
+                  تغيير رابط التسجيل
                 </h3>
-                <p className="mt-2 max-w-md text-sm leading-6 text-[#69766d]">
-                  أدخل رابط دعوة Uber الجديد، وسيتم استخدامه تلقائيًا في صفحة الهبوط.
+                <p className="mt-2 max-w-md text-sm leading-6 text-[#657169]">
+                  لو وصلك رابط تسجيل جديد من Uber، ضعه هنا بدل الرابط الحالي.
                 </p>
               </div>
               <button
@@ -819,12 +838,26 @@ function Dashboard() {
             </div>
 
             <form onSubmit={(event) => void handleSave(event)} className="mt-6 space-y-5">
+              <ol className="space-y-2 rounded-xl bg-[#f7f9f7] p-4 text-sm leading-6 text-[#657169]">
+                <li>
+                  <span className="font-bold text-[#137344]">الخطوة الأولى:</span> الصق رابط التسجيل
+                  الجديد هنا.
+                </li>
+                <li>
+                  <span className="font-bold text-[#137344]">الخطوة الثانية:</span> راجع الرابط قبل
+                  الحفظ.
+                </li>
+                <li>
+                  <span className="font-bold text-[#137344]">الخطوة الثالثة:</span> اضغط على حفظ
+                  الرابط الجديد لتحديث الرابط في صفحتك.
+                </li>
+              </ol>
               <div>
                 <label
                   htmlFor="invite-link"
                   className="mb-2 block text-sm font-semibold text-[#344138]"
                 >
-                  رابط الدعوة
+                  رابط التسجيل الجديد
                 </label>
                 <input
                   id="invite-link"
@@ -840,20 +873,24 @@ function Dashboard() {
                   dir="ltr"
                   className="min-h-[50px] w-full rounded-xl border border-[#dfe6df] bg-[#fbfcfb] px-4 text-left text-sm text-[#202a23] outline-none transition placeholder:text-[#a6afa8] focus:border-[#16804e] focus:bg-white focus:ring-4 focus:ring-[#16804e]/10"
                 />
-                <p className="mt-2 text-xs text-[#829087]">
-                  سيتم استخراج كود الدعوة تلقائيًا من الرابط.
+                <p className="mt-2 text-xs leading-5 text-[#657169]">
+                  راجع الرابط أعلاه وتأكد أنه الرابط الذي تريد استخدامه.
                 </p>
               </div>
               <div className="rounded-xl border border-[#e5ebe6] bg-[#f7f9f7] px-4 py-3">
-                <p className="text-xs font-semibold text-[#758178]">كود الدعوة</p>
+                <p className="text-xs font-semibold text-[#657169]">كود الدعوة</p>
                 <p dir="ltr" className="mt-1.5 text-left text-sm font-bold text-[#29372e]">
                   {inviteCode || "—"}
                 </p>
-                {!inviteCode && (
-                  <p className="mt-1.5 text-xs text-[#829087]">
-                    لم يتم العثور على كود دعوة داخل الرابط.
-                  </p>
-                )}
+                <p
+                  className={`mt-1.5 text-xs leading-5 ${
+                    inviteCode ? "text-[#137344]" : "text-[#a33e34]"
+                  }`}
+                >
+                  {inviteCode
+                    ? "تم العثور على كود الدعوة، وسيتم تحديثه مع الرابط."
+                    : "لم نتمكن من العثور على كود دعوة داخل الرابط. راجع الرابط قبل الحفظ."}
+                </p>
               </div>
               {formError && (
                 <p
@@ -863,7 +900,7 @@ function Dashboard() {
                   {formError}
                 </p>
               )}
-              <div className="flex flex-wrap justify-end gap-3 border-t border-[#edf0ed] pt-5 max-sm:flex-col">
+              <div className="flex flex-wrap justify-end gap-3 border-t border-[#e5ebe6] pt-5 max-sm:flex-col">
                 <button
                   type="button"
                   onClick={closeEditor}
@@ -877,7 +914,7 @@ function Dashboard() {
                   disabled={saving}
                   className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#137344] px-5 text-sm font-bold text-white transition hover:bg-[#105f38] disabled:cursor-not-allowed disabled:opacity-60 max-sm:w-full"
                 >
-                  {saving ? "جاري الحفظ..." : "حفظ الرابط"}
+                  {saving ? "جارٍ حفظ الرابط..." : "حفظ الرابط الجديد"}
                 </button>
               </div>
             </form>
@@ -887,7 +924,7 @@ function Dashboard() {
 
       {customizingPage && customizingPageId && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-[#10231a]/55 p-3 backdrop-blur-sm sm:p-5"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#10231a]/55 p-3 backdrop-blur-sm sm:p-5 max-sm:p-0"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) closeCustomization();
           }}
@@ -896,18 +933,18 @@ function Dashboard() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="customization-title"
-            className="max-h-[min(92dvh,860px)] w-full max-w-[calc(100vw-24px)] overflow-y-auto overscroll-contain rounded-[24px] bg-white p-4 shadow-2xl sm:max-w-2xl sm:p-7"
+            className="flex h-[min(92dvh,860px)] max-h-[min(92dvh,860px)] w-full max-w-[calc(100vw-24px)] flex-col overflow-hidden rounded-[24px] bg-white p-4 shadow-2xl sm:max-w-2xl sm:p-6 max-sm:h-[100dvh] max-sm:max-h-[100dvh] max-sm:max-w-none max-sm:rounded-none max-sm:px-4 max-sm:pt-[calc(1rem+env(safe-area-inset-top))] max-sm:pb-[env(safe-area-inset-bottom)]"
           >
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[#e5ebe6] pb-4">
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold text-[#16804e]">
+                <p className="text-xs font-semibold text-[#137344]">
                   {getPageTitle(customizingPage.slug)}
                 </p>
                 <h3 id="customization-title" className="mt-1 text-xl font-bold text-[#202a23]">
-                  تخصيص الصفحة
+                  تعديل شكل الصفحة
                 </h3>
-                <p className="mt-2 max-w-xl text-sm leading-6 text-[#69766d]">
-                  غيّر شكل ومحتوى الصفحة بسهولة بدون الحاجة لتعديل الموقع.
+                <p className="mt-2 max-w-xl text-sm leading-6 text-[#657169]">
+                  غيّر الألوان والعناوين لتناسب الشكل اللي تحبه.
                 </p>
               </div>
               <button
@@ -922,203 +959,227 @@ function Dashboard() {
 
             <form
               onSubmit={(event) => void handleCustomizationSave(event)}
-              className="mt-6 space-y-5"
+              className="mt-0 flex min-h-0 flex-1 flex-col overflow-hidden"
             >
-              <section className="rounded-2xl border border-[#e5ebe6] bg-[#fbfcfb] p-4 sm:p-5">
-                <div className="mb-4">
-                  <h4 className="text-base font-bold text-[#202a23]">مظهر الصفحة</h4>
-                  <p className="mt-1 text-sm leading-6 text-[#758178]">
-                    اختر اللون الذي تريد تغييره، وتعرّف على العنصر الذي سيؤثر عليه.
-                  </p>
-                </div>
-                <div className="space-y-3">
-                  {(
-                    [
+              <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain py-4 sm:py-5">
+                <section className="rounded-2xl border border-[#e5ebe6] bg-[#fbfcfb] p-4 sm:p-5">
+                  <div className="mb-4">
+                    <h4 className="text-base font-bold text-[#202a23]">تغيير الألوان</h4>
+                    <p className="mt-1 text-sm leading-6 text-[#657169]">
+                      اختر لونًا جديدًا للعنوان أو الزر أو خلفية الصفحة أو النصوص.
+                    </p>
+                  </div>
+                  <div className="space-y-3">
+                    {(
                       [
-                        "primaryColor",
-                        "لون العنوان الرئيسي",
-                        "يغيّر لون العنوان الكبير الظاهر في بداية الصفحة.",
-                      ],
-                      [
-                        "buttonColor",
-                        "لون زر التقديم الرئيسي",
-                        "يغيّر لون زر التقديم الرئيسي في الصفحة.",
-                      ],
-                      ["backgroundColor", "لون خلفية الصفحة", "يغيّر لون الخلفية الرئيسية للصفحة."],
-                      ["textColor", "لون النصوص", "يغيّر لون النصوص والوصف داخل الصفحة."],
-                    ] as const
-                  ).map(([key, label, description]) => (
-                    <div
-                      key={key}
-                      className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#e5ebe6] bg-white p-3 sm:px-4"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <label
-                          htmlFor={`customization-${key}`}
-                          className="text-sm font-semibold text-[#344138]"
-                        >
-                          {label}
-                        </label>
-                        <p className="mt-1 text-xs leading-5 text-[#829087]">{description}</p>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span
-                          className="size-5 shrink-0 rounded-md border border-black/10"
-                          style={{
-                            backgroundColor:
+                        [
+                          "primaryColor",
+                          "لون العنوان الرئيسي",
+                          "يغيّر لون العنوان الكبير الظاهر في بداية الصفحة.",
+                        ],
+                        [
+                          "buttonColor",
+                          "لون زر التقديم الرئيسي",
+                          "يغيّر لون زر التقديم الرئيسي في الصفحة.",
+                        ],
+                        [
+                          "backgroundColor",
+                          "لون خلفية الصفحة",
+                          "يغيّر لون الخلفية الرئيسية للصفحة.",
+                        ],
+                        ["textColor", "لون النصوص", "يغيّر لون النصوص والوصف داخل الصفحة."],
+                      ] as const
+                    ).map(([key, label, description]) => (
+                      <div
+                        key={key}
+                        className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#e5ebe6] bg-white p-3 sm:px-4"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <label
+                            htmlFor={`customization-${key}`}
+                            className="text-sm font-semibold text-[#344138]"
+                          >
+                            {label}
+                          </label>
+                          <p className="mt-1 text-xs leading-5 text-[#657169]">{description}</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span
+                            className="size-5 shrink-0 rounded-md border border-black/10"
+                            style={{
+                              backgroundColor:
+                                customization[key] ||
+                                LANDING_PAGE_DEFAULT_COLORS[customizingPageId][key],
+                            }}
+                            aria-hidden="true"
+                          />
+                          <span
+                            dir="ltr"
+                            className="min-w-[4.5rem] text-left text-xs font-semibold tabular-nums text-[#657169]"
+                          >
+                            {customization[key] ||
+                              LANDING_PAGE_DEFAULT_COLORS[customizingPageId][key]}
+                          </span>
+                          <input
+                            id={`customization-${key}`}
+                            type="color"
+                            aria-label={label}
+                            value={
                               customization[key] ||
-                              LANDING_PAGE_DEFAULT_COLORS[customizingPageId][key],
-                          }}
-                          aria-hidden="true"
-                        />
-                        <span
-                          dir="ltr"
-                          className="min-w-[4.5rem] text-left text-xs font-semibold tabular-nums text-[#58645b]"
-                        >
-                          {customization[key] ||
-                            LANDING_PAGE_DEFAULT_COLORS[customizingPageId][key]}
-                        </span>
-                        <input
-                          id={`customization-${key}`}
-                          type="color"
-                          aria-label={label}
-                          value={
-                            customization[key] ||
-                            LANDING_PAGE_DEFAULT_COLORS[customizingPageId][key]
-                          }
-                          onChange={(event) =>
-                            setCustomization((current) => ({
-                              ...current,
-                              [key]: event.target.value,
-                            }))
-                          }
-                          className="size-10 cursor-pointer rounded-lg border border-[#dfe6df] bg-white p-1"
-                        />
+                              LANDING_PAGE_DEFAULT_COLORS[customizingPageId][key]
+                            }
+                            onChange={(event) =>
+                              setCustomization((current) => ({
+                                ...current,
+                                [key]: event.target.value,
+                              }))
+                            }
+                            className="size-10 cursor-pointer rounded-lg border border-[#e5ebe6] bg-white p-1"
+                          />
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </section>
+                    ))}
+                  </div>
+                </section>
 
-              <section className="rounded-2xl border border-[#e5ebe6] bg-[#fbfcfb] p-4 sm:p-5">
-                <div className="mb-4">
-                  <h4 className="text-base font-bold text-[#202a23]">النصوص</h4>
-                  <p className="mt-1 text-sm leading-6 text-[#758178]">
-                    اكتب النص الجديد، أو اترك الخانة فارغة ليبقى النص الحالي كما هو.
-                  </p>
-                </div>
-                <div className="space-y-4">
-                  <label className="block">
-                    <span className="block text-sm font-semibold text-[#344138]">
-                      العنوان الرئيسي
-                    </span>
-                    <span className="mt-1 block text-xs leading-5 text-[#829087]">
-                      هذا هو العنوان الكبير الذي يظهر في بداية الصفحة.
-                    </span>
-                    <input
-                      type="text"
-                      value={customization.heroTitle}
-                      onChange={(event) =>
-                        setCustomization((current) => ({
-                          ...current,
-                          heroTitle: event.target.value,
-                        }))
-                      }
-                      className="mt-2 min-h-11 w-full rounded-xl border border-[#dfe6df] bg-white px-3 text-sm outline-none placeholder:text-[#a0aaa2] focus:border-[#16804e] focus:ring-4 focus:ring-[#16804e]/10"
-                    />
-                  </label>
-                  <label className="block">
-                    <span className="block text-sm font-semibold text-[#344138]">وصف الصفحة</span>
-                    <span className="mt-1 block text-xs leading-5 text-[#829087]">
-                      النص الذي يظهر أسفل العنوان الرئيسي.
-                    </span>
-                    <textarea
-                      rows={3}
-                      value={customization.heroDescription}
-                      onChange={(event) =>
-                        setCustomization((current) => ({
-                          ...current,
-                          heroDescription: event.target.value,
-                        }))
-                      }
-                      className="mt-2 w-full resize-y rounded-xl border border-[#dfe6df] bg-white px-3 py-2.5 text-sm outline-none placeholder:text-[#a0aaa2] focus:border-[#16804e] focus:ring-4 focus:ring-[#16804e]/10"
-                    />
-                  </label>
-                  <label className="block">
-                    <span className="block text-sm font-semibold text-[#344138]">
-                      نص زر التقديم
-                    </span>
-                    <span className="mt-1 block text-xs leading-5 text-[#829087]">
-                      النص الذي يظهر داخل زر الدعوة.
-                    </span>
-                    <input
-                      type="text"
-                      value={customization.heroButtonText}
-                      onChange={(event) =>
-                        setCustomization((current) => ({
-                          ...current,
-                          heroButtonText: event.target.value,
-                        }))
-                      }
-                      className="mt-2 min-h-11 w-full rounded-xl border border-[#dfe6df] bg-white px-3 text-sm outline-none placeholder:text-[#a0aaa2] focus:border-[#16804e] focus:ring-4 focus:ring-[#16804e]/10"
-                    />
-                  </label>
-                </div>
-              </section>
+                <section className="rounded-2xl border border-[#e5ebe6] bg-[#fbfcfb] p-4 sm:p-5">
+                  <div className="mb-4">
+                    <h4 className="text-base font-bold text-[#202a23]">تغيير النصوص</h4>
+                    <p className="mt-1 text-sm leading-6 text-[#657169]">
+                      اكتب العنوان والوصف اللذين تريد أن يراهما زوار صفحتك.
+                    </p>
+                  </div>
+                  <div className="space-y-4">
+                    <label className="block">
+                      <span className="block text-sm font-semibold text-[#202a23]">
+                        العنوان الرئيسي
+                      </span>
+                      <span className="mt-1 block text-xs leading-5 text-[#657169]">
+                        هذا هو العنوان الكبير الذي يظهر في بداية الصفحة.
+                      </span>
+                      <input
+                        type="text"
+                        value={customization.heroTitle}
+                        onChange={(event) =>
+                          setCustomization((current) => ({
+                            ...current,
+                            heroTitle: event.target.value,
+                          }))
+                        }
+                        className="mt-2 min-h-11 w-full rounded-xl border border-[#dfe6df] bg-white px-3 text-sm outline-none placeholder:text-[#a0aaa2] focus:border-[#16804e] focus:ring-4 focus:ring-[#16804e]/10"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="block text-sm font-semibold text-[#202a23]">وصف الصفحة</span>
+                      <span className="mt-1 block text-xs leading-5 text-[#657169]">
+                        النص الذي يظهر أسفل العنوان الرئيسي.
+                      </span>
+                      <textarea
+                        rows={3}
+                        value={customization.heroDescription}
+                        onChange={(event) =>
+                          setCustomization((current) => ({
+                            ...current,
+                            heroDescription: event.target.value,
+                          }))
+                        }
+                        className="mt-2 w-full resize-y rounded-xl border border-[#dfe6df] bg-white px-3 py-2.5 text-sm outline-none placeholder:text-[#a0aaa2] focus:border-[#16804e] focus:ring-4 focus:ring-[#16804e]/10"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="block text-sm font-semibold text-[#202a23]">
+                        نص زر التقديم
+                      </span>
+                      <span className="mt-1 block text-xs leading-5 text-[#657169]">
+                        النص الذي يظهر داخل زر الدعوة.
+                      </span>
+                      <input
+                        type="text"
+                        value={customization.heroButtonText}
+                        onChange={(event) =>
+                          setCustomization((current) => ({
+                            ...current,
+                            heroButtonText: event.target.value,
+                          }))
+                        }
+                        className="mt-2 min-h-11 w-full rounded-xl border border-[#dfe6df] bg-white px-3 text-sm outline-none placeholder:text-[#a0aaa2] focus:border-[#16804e] focus:ring-4 focus:ring-[#16804e]/10"
+                      />
+                    </label>
+                  </div>
+                </section>
 
-              <section className="rounded-2xl border border-[#e5ebe6] bg-[#fbfcfb] p-4 sm:p-5">
-                <div className="mb-4">
-                  <h4 className="text-base font-bold text-[#202a23]">صور الصفحة</h4>
-                  <p className="mt-1 text-sm leading-6 text-[#758178]">
-                    أضف أو غيّر الصور المعروضة في الصفحة، وستظهر التغييرات مباشرة في الواجهة.
-                  </p>
-                </div>
-                <div className="grid gap-3">
-                  {getPageImageConfig(customizingPage.slug).map(
-                    ({ key, label, description, defaultFile }) => {
-                      const currentImage = pageImageUrls[key] || "";
-                      const inputId = getImagePickerInputId(key);
-                      const isUploading = uploadingImageKey === key;
-                      const isDeleting = deletingImageKey === key;
-                      const isBusy = isUploading || isDeleting;
-                      const imageLoading = loadingPageImages && !currentImage;
-                      const isDefaultImage =
-                        !customization[key] ||
-                        getStoragePathFromUrl(currentImage) ===
-                          `${customizingPage.slug}/${defaultFile}`;
+                <section className="rounded-2xl border border-[#e5ebe6] bg-[#fbfcfb] p-4 sm:p-5">
+                  <div className="mb-4">
+                    <h4 className="text-base font-bold text-[#202a23]">تغيير الصور</h4>
+                    <p className="mt-1 text-sm leading-6 text-[#657169]">
+                      تقدر تستبدل الصور الحالية بصور جديدة، أو ترجع للصورة الأصلية في أي وقت.
+                    </p>
+                    <p className="mt-2 text-xs leading-5 text-[#657169]">
+                      الصور المقبولة: JPG أو PNG أو WebP، وبحجم لا يزيد على 5 ميجابايت.
+                    </p>
+                  </div>
+                  <div className="grid gap-3 min-[640px]:grid-cols-2">
+                    {getPageImageConfig(customizingPage.slug).map(
+                      ({ key, label, description, defaultFile }) => {
+                        const currentImage = pageImageUrls[key] || "";
+                        const inputId = getImagePickerInputId(key);
+                        const isUploading = uploadingImageKey === key;
+                        const isDeleting = deletingImageKey === key;
+                        const isBusy = isUploading || isDeleting;
+                        const imageLoading = loadingPageImages && !currentImage;
+                        const isDefaultImage =
+                          !customization[key] ||
+                          getStoragePathFromUrl(currentImage) ===
+                            `${customizingPage.slug}/${defaultFile}`;
 
-                      return (
-                        <div
-                          key={key}
-                          className="rounded-xl border border-[#e5ebe6] bg-white p-3.5"
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0 flex-1">
-                              <p className="text-sm font-semibold text-[#344138]">{label}</p>
-                              <p className="mt-1 text-xs leading-5 text-[#829087]">{description}</p>
+                        return (
+                          <div
+                            key={key}
+                            className="min-w-0 rounded-xl border border-[#e5ebe6] bg-white p-3.5"
+                          >
+                            <div className="flex min-w-0 items-start justify-between gap-2">
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-semibold text-[#202a23]">{label}</p>
+                                <p className="mt-1 text-xs leading-5 text-[#657169]">
+                                  {description}
+                                </p>
+                              </div>
+                              <span
+                                className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-semibold ${
+                                  !currentImage
+                                    ? "bg-[#f2f5f2] text-[#69766d]"
+                                    : isDefaultImage
+                                      ? "bg-[#f2f5f2] text-[#69766d]"
+                                      : "bg-[#eaf6ee] text-[#137344]"
+                                }`}
+                              >
+                                {!currentImage
+                                  ? "لم يتم العثور على صورة"
+                                  : isDefaultImage
+                                    ? "أنت تستخدم الصورة الأصلية"
+                                    : "أنت تستخدم صورة بديلة"}
+                              </span>
                             </div>
-                          </div>
 
-                          <div className="mt-3 flex items-center gap-3">
-                            {currentImage ? (
-                              <div className="relative h-20 w-20 overflow-hidden rounded-xl border border-[#dfe6df] bg-[#f7f9f7]">
+                            <div className="mt-3 aspect-[16/8] w-full overflow-hidden rounded-xl border border-[#dfe6df] bg-[#f7f9f7]">
+                              {currentImage ? (
                                 <img
                                   src={currentImage}
                                   alt={label}
                                   className="h-full w-full object-cover"
                                 />
-                              </div>
-                            ) : imageLoading ? (
-                              <div className="flex h-20 w-20 items-center justify-center rounded-xl border border-dashed border-[#cfe0d4] bg-[#f7faf7] text-xs text-[#7c8a82]">
-                                جاري التحميل...
-                              </div>
-                            ) : (
-                              <div className="flex h-20 w-20 items-center justify-center rounded-xl border border-dashed border-[#cfe0d4] bg-[#f7faf7] text-[#7c8a82]">
-                                <ImageUp size={20} />
-                              </div>
-                            )}
+                              ) : imageLoading ? (
+                                <div className="flex h-full w-full items-center justify-center text-sm text-[#657169]">
+                                  جاري التحميل...
+                                </div>
+                              ) : (
+                                <div className="flex h-full w-full items-center justify-center text-[#657169]">
+                                  <ImageUp size={20} />
+                                </div>
+                              )}
+                            </div>
 
-                            <div className="flex min-w-0 flex-1 flex-wrap gap-2">
+                            <div className="mt-3 grid min-w-0 gap-2 min-[440px]:grid-cols-2">
                               <input
                                 id={inputId}
                                 type="file"
@@ -1134,19 +1195,26 @@ function Dashboard() {
                                     type="button"
                                     onClick={() => document.getElementById(inputId)?.click()}
                                     disabled={isBusy || loadingPageImages}
-                                    className="inline-flex min-h-11 items-center justify-center rounded-xl border border-[#dfe6df] bg-white px-3 text-sm font-semibold text-[#334239] transition hover:bg-[#f7faf7] disabled:cursor-not-allowed disabled:opacity-50"
+                                    className="inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-xl border border-[#dfe6df] bg-white px-3 text-center text-sm font-semibold leading-5 text-[#334239] transition hover:bg-[#f7faf7] disabled:cursor-not-allowed disabled:opacity-50"
                                   >
-                                    {isUploading ? "جاري رفع الصورة..." : "تغيير الصورة"}
+                                    <ImageUp size={16} className="shrink-0" />
+                                    {isUploading
+                                      ? "جارٍ تغيير الصورة..."
+                                      : isDefaultImage
+                                        ? "اختيار صورة جديدة"
+                                        : "تغيير الصورة"}
                                   </button>
                                   {!isDefaultImage && (
                                     <button
                                       type="button"
-                                      onClick={() => void handleImageDelete(key)}
+                                      onClick={() => setImageToRestore(key)}
                                       disabled={isBusy || loadingPageImages}
-                                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#f0d5d2] bg-[#fff4f3] px-3 text-sm font-semibold text-[#9a453d] transition hover:bg-[#ffeae7] disabled:cursor-not-allowed disabled:opacity-50"
+                                      className="inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-xl border border-[#f0d5d2] bg-[#fff4f3] px-3 text-center text-sm font-semibold leading-5 text-[#9a453d] transition hover:bg-[#ffeae7] disabled:cursor-not-allowed disabled:opacity-50"
                                     >
-                                      <Trash2 size={16} />
-                                      {isDeleting ? "جاري حذف الصورة..." : "حذف الصورة"}
+                                      <RotateCcw size={16} className="shrink-0" />
+                                      {isDeleting
+                                        ? "جارٍ العودة للصورة الأصلية..."
+                                        : "العودة للصورة الأصلية"}
                                     </button>
                                   )}
                                 </>
@@ -1155,93 +1223,98 @@ function Dashboard() {
                                   type="button"
                                   onClick={() => document.getElementById(inputId)?.click()}
                                   disabled={isBusy || loadingPageImages}
-                                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#137344] px-3 text-sm font-bold text-white transition hover:bg-[#105f38] disabled:cursor-not-allowed disabled:opacity-60"
+                                  className="inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-xl bg-[#137344] px-3 text-center text-sm font-bold leading-5 text-white transition hover:bg-[#105f38] disabled:cursor-not-allowed disabled:opacity-60 min-[440px]:col-span-2"
                                 >
-                                  <ImageUp size={16} />
-                                  {isBusy ? "جاري رفع الصورة..." : "إضافة صورة"}
+                                  <ImageUp size={16} className="shrink-0" />
+                                  {isBusy ? "جارٍ تغيير الصورة..." : "اختيار صورة جديدة"}
                                 </button>
                               )}
                             </div>
                           </div>
-                        </div>
-                      );
-                    },
-                  )}
-                </div>
-              </section>
+                        );
+                      },
+                    )}
+                  </div>
+                </section>
 
-              <section className="rounded-2xl border border-[#e5ebe6] bg-[#fbfcfb] p-4 sm:p-5">
-                <div className="mb-3">
-                  <h4 className="text-base font-bold text-[#202a23]">إظهار / إخفاء العناصر</h4>
-                  <p className="mt-1 text-sm leading-6 text-[#758178]">
-                    اختر العناصر التي تريد إظهارها للزوار.
-                  </p>
-                </div>
-                <div className="divide-y divide-[#edf0ed]">
-                  {(
-                    [
+                <section className="rounded-2xl border border-[#e5ebe6] bg-[#fbfcfb] p-4 sm:p-5">
+                  <div className="mb-3">
+                    <h4 className="text-base font-bold text-[#202a23]">اختيار ما يظهر في الصفحة</h4>
+                    <p className="mt-1 text-sm leading-6 text-[#657169]">
+                      تقدر تخفي أي قسم مش محتاجه، وتظهره مرة تانية وقت ما تحب.
+                    </p>
+                  </div>
+                  <div className="divide-y divide-[#e5ebe6]">
+                    {(
                       [
-                        "showImage",
-                        customizingPageId === 1
-                          ? "صور الدراجة والسيارة — أسفل مقدمة الصفحة"
-                          : "صور السيارة والدراجة — أعلى الصفحة",
-                        customizingPageId === 1
-                          ? "صور خيارات العمل التي تظهر أسفل عنوان الصفحة."
-                          : "صور السيارة والدراجة التي تظهر في بداية الصفحة.",
-                      ],
-                      [
-                        "showSection",
-                        customizingPageId === 1
-                          ? "قسم كيف تعمل — منتصف الصفحة"
-                          : "قسم خيارات السيارة والدراجة — بعد المقدمة",
-                        customizingPageId === 1
-                          ? "خطوات التقديم الثلاث التي تشرح طريقة البدء."
-                          : "القسم الذي يعرض خياري القيادة بالسيارة والتوصيل بالدراجة.",
-                      ],
-                      [
-                        "showCTA",
-                        "زر التقديم الرئيسي — أعلى الصفحة",
-                        "الزر الذي يبدأ التقديم من بداية الصفحة.",
-                      ],
-                    ] as const
-                  ).map(([key, label, description]) => (
-                    <div
-                      key={key}
-                      className="flex min-h-[76px] items-center justify-between gap-4 py-3"
-                    >
-                      <span className="min-w-0">
-                        <span className="block text-sm font-semibold text-[#344138]">{label}</span>
-                        <span className="mt-1 block text-xs leading-5 text-[#829087]">
-                          {description}
-                        </span>
-                      </span>
-                      <span className="text-xs font-semibold text-[#758178]">
-                        {customization[key] ? "ظاهر" : "مخفي"}
-                      </span>
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-label={`إظهار أو إخفاء: ${label}`}
-                        aria-checked={customization[key]}
-                        onClick={() =>
-                          setCustomization((current) => ({ ...current, [key]: !current[key] }))
-                        }
-                        className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#16804e]/20 ${
-                          customization[key] ? "bg-[#16804e]" : "bg-[#c7d0c9]"
-                        }`}
+                        [
+                          "showImage",
+                          customizingPageId === 1
+                            ? "صور خيارات السيارة والدراجة"
+                            : "صور مقدمة الصفحة",
+                          customizingPageId === 1
+                            ? "إظهار أو إخفاء صور خيارات العمل أسفل عنوان الصفحة."
+                            : "إظهار أو إخفاء الصور الموجودة في أعلى الصفحة.",
+                        ],
+                        [
+                          "showSection",
+                          customizingPageId === 1
+                            ? "قسم طريقة العمل"
+                            : "قسم خيارات السيارة والدراجة",
+                          customizingPageId === 1
+                            ? "إظهار هذا القسم أو إخفاؤه من الصفحة."
+                            : "إظهار هذا القسم أو إخفاؤه من الصفحة.",
+                        ],
+                        [
+                          "showCTA",
+                          "زر التسجيل في أعلى الصفحة",
+                          "إظهار الزر للزوار أو إخفاؤه من الصفحة.",
+                        ],
+                      ] as const
+                    ).map(([key, label, description]) => (
+                      <div
+                        key={key}
+                        className="flex min-h-[76px] items-center justify-between gap-3 py-3"
                       >
+                        <span className="min-w-0">
+                          <span className="block text-sm font-semibold text-[#202a23]">
+                            {label}
+                          </span>
+                          <span className="mt-1 block text-xs leading-5 text-[#657169]">
+                            {description}
+                          </span>
+                        </span>
                         <span
-                          className={`size-5 rounded-full bg-white shadow-sm transition-transform ${
-                            customization[key] ? "translate-x-1" : "translate-x-6"
+                          className={`min-w-[5.5rem] text-left text-xs font-semibold ${
+                            customization[key] ? "text-[#137344]" : "text-[#657169]"
                           }`}
-                        />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </section>
-
-              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#edf0ed] pt-5 max-sm:flex-col">
+                        >
+                          {customization[key] ? "ظاهر للزوار" : "مخفي عن الزوار"}
+                        </span>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-label={`إظهار أو إخفاء: ${label}`}
+                          aria-checked={customization[key]}
+                          onClick={() =>
+                            setCustomization((current) => ({ ...current, [key]: !current[key] }))
+                          }
+                          className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#137344]/20 ${
+                            customization[key] ? "bg-[#137344]" : "bg-[#c7d0c9]"
+                          }`}
+                        >
+                          <span
+                            className={`size-5 rounded-full bg-white shadow-sm transition-transform ${
+                              customization[key] ? "translate-x-1" : "translate-x-6"
+                            }`}
+                          />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              </div>
+              <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-[#e5ebe6] bg-white pt-4 max-sm:flex-col sm:pt-5">
                 <button
                   type="button"
                   onClick={() => void handleCustomizationReset()}
@@ -1249,7 +1322,7 @@ function Dashboard() {
                   className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-3 text-sm font-semibold text-[#69766d] transition hover:bg-[#f3f6f3] disabled:opacity-50 max-sm:w-full"
                 >
                   <RotateCcw size={16} />
-                  استعادة التصميم الأصلي
+                  العودة للألوان والنصوص الأصلية
                 </button>
                 <div className="flex flex-wrap justify-end gap-3 max-sm:w-full max-sm:flex-col">
                   <button
@@ -1265,7 +1338,7 @@ function Dashboard() {
                     disabled={savingCustomization}
                     className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#137344] px-5 text-sm font-bold text-white transition hover:bg-[#105f38] disabled:cursor-not-allowed disabled:opacity-60 max-sm:w-full"
                   >
-                    {savingCustomization ? "جاري الحفظ..." : "حفظ التخصيصات"}
+                    {savingCustomization ? "جارٍ حفظ التعديلات..." : "حفظ التعديلات"}
                   </button>
                 </div>
               </div>
@@ -1274,11 +1347,47 @@ function Dashboard() {
         </div>
       )}
 
+      <AlertDialog
+        open={imageToRestore !== null}
+        onOpenChange={(open) => {
+          if (!open) setImageToRestore(null);
+        }}
+      >
+        <AlertDialogContent
+          dir="rtl"
+          className="w-[calc(100vw-2rem)] max-w-md rounded-2xl border-[#e5ebe6] bg-white p-5 sm:p-6"
+        >
+          <AlertDialogHeader className="text-right">
+            <AlertDialogTitle className="text-[#202a23]">العودة للصورة الأصلية؟</AlertDialogTitle>
+            <AlertDialogDescription className="leading-6 text-[#657169]">
+              هل تريد حذف الصورة الجديدة
+              {imageToRestoreConfig ? ` (${imageToRestoreConfig.label})` : ""} والعودة للصورة
+              الأصلية؟
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:flex-row-reverse">
+            <AlertDialogCancel className="mt-0 min-h-11 rounded-xl border-[#e5ebe6] text-[#202a23]">
+              إلغاء
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const key = imageToRestore;
+                setImageToRestore(null);
+                if (key) void handleImageDelete(key);
+              }}
+              className="min-h-11 rounded-xl bg-[#137344] text-white hover:bg-[#105f38]"
+            >
+              نعم، العودة للصورة الأصلية
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {notice && (
         <div
           role="status"
           aria-live="polite"
-          className={`fixed bottom-5 left-1/2 z-[60] flex max-w-[calc(100vw-24px)] -translate-x-1/2 items-center gap-2 rounded-xl px-4 py-3 text-center text-sm font-semibold text-white shadow-xl ${
+          className={`fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom))] left-1/2 z-[60] flex max-w-[calc(100vw-24px)] -translate-x-1/2 items-center gap-2 rounded-xl px-4 py-3 text-center text-sm font-semibold text-white shadow-xl ${
             notice.type === "success" ? "bg-[#137344]" : "bg-[#a33e34]"
           }`}
         >
